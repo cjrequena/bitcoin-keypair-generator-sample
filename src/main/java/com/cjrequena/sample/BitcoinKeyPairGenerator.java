@@ -1,0 +1,205 @@
+package com.cjrequena.sample;
+
+import lombok.extern.log4j.Log4j2;
+import org.bitcoinj.core.Base58;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
+import javax.xml.bind.DatatypeConverter;
+import java.io.UnsupportedEncodingException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.SecureRandom;
+import java.security.Security;
+import java.security.interfaces.ECPrivateKey;
+import java.security.interfaces.ECPublicKey;
+import java.security.spec.ECGenParameterSpec;
+import java.security.spec.ECPoint;
+import java.security.spec.InvalidKeySpecException;
+import java.util.Random;
+
+/**
+ * <p>
+ * <p>
+ * <p>
+ * <p>
+ * @author cjrequena
+ *
+ */
+@Log4j2
+public class BitcoinKeyPairGenerator {
+
+  private static String SECP256K1 = "secp256k1";
+
+  static {
+    if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+      Security.addProvider(new BouncyCastleProvider());
+    }
+  }
+
+  /**
+   *
+   * @return
+   * @throws NoSuchAlgorithmException
+   * @throws InvalidAlgorithmParameterException
+   */
+  public static KeyPair generateECKeyPair() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
+    KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
+    ECGenParameterSpec parameterSpec = new ECGenParameterSpec(SECP256K1);
+    SecureRandom secureRandom = new SecureRandom();
+    secureRandom.setSeed(new Random().nextLong());
+    keyGen.initialize(parameterSpec, secureRandom);
+    KeyPair keyPair = keyGen.generateKeyPair();
+    return keyPair;
+  }
+
+  /**
+   *
+   * @param compressed
+   * @return
+   * @throws InvalidAlgorithmParameterException
+   * @throws NoSuchAlgorithmException
+   * @throws NoSuchProviderException
+   * @throws InvalidKeySpecException
+   * @throws UnsupportedEncodingException
+   */
+  public static BitcoinKeyPair generateBitcoinKeyPair(boolean compressed)
+    throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException, UnsupportedEncodingException {
+
+    String bitcoinPublicKey = null;
+    String bitcoinPrivateKey = null;
+    String bitcoinAddress = null;
+
+    //****************************
+    //0.- Generate ECDSA Key Pair
+    //****************************
+    KeyPair keyPair = generateECKeyPair();
+
+    //****************************
+    // 1.- The Private Key
+    //****************************
+    ECPrivateKey ecPrivateKey = (ECPrivateKey) keyPair.getPrivate();
+    bitcoinPrivateKey = adjustTo64(ecPrivateKey.getS().toString(16)).toUpperCase();
+    log.info("Private Key: {}", bitcoinPrivateKey);
+
+    ECPublicKey ecPublicKey = (ECPublicKey) keyPair.getPublic();
+    ECPoint ecPoint = ecPublicKey.getW();
+    String sxBase2 = ecPoint.getAffineX().toString(2).toUpperCase();
+    String syBase2 = ecPoint.getAffineY().toString(2).toUpperCase();
+    String sxBase16 = adjustTo64(ecPoint.getAffineX().toString(16)).toUpperCase();
+    String syBase16 = adjustTo64(ecPoint.getAffineY().toString(16)).toUpperCase();
+
+    //    log.info("sxBase2: {}", sxBase2);
+    //    log.info("syBase2: {}", syBase2);
+    //    log.info("sxBase16: {}", sxBase16);
+    //    log.info("syBase16: {}", syBase16);
+
+    //****************************
+    // 2.- The Public Key
+    //****************************
+    if (!compressed) {
+      //****************************
+      // [uncompressed] This is the old format. It has generally stopped being used in favor of the shorter compressed format.
+      // In this uncompressed format, you just place the x and y coordinate next to each other, then prefix the whole thing with an 04
+      //****************************
+      bitcoinPublicKey = "04" + sxBase16 + syBase16;
+    } else {
+      //****************************
+      // [compressed] Take the corresponding public key generated with it (33 bytes, 1 byte 0x02 (y-coord is even) 0x03 (y-coord is odd), and 32 bytes corresponding to X coordinate)
+      // If the last binary digit of the y coordinate is 0, then the number is even, which corresponds to positive. If it is 1, then it is negative.
+      //****************************
+      if (syBase2.charAt(syBase2.length() - 1) == '0') {
+        bitcoinPublicKey = "02" + sxBase16;
+      } else {
+        bitcoinPublicKey = "03" + sxBase16;
+      }
+    }
+
+    log.info("Public Key: {}", bitcoinPublicKey);
+
+    // 3.-  Perform SHA-256 hashing on the public key
+    MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+    byte[] s1 = sha256.digest(DatatypeConverter.parseHexBinary(bitcoinPublicKey));
+    //byte[] s1 = sha256.digest(bitcoinPublicKey.getBytes(StandardCharsets.UTF_8));
+    log.info("sha256: {}", bytesToHex(s1).toUpperCase());
+
+    // 4.- Perform RIPEMD-160 hashing on the result of SHA-256
+    MessageDigest ripeMD160Digest = MessageDigest.getInstance("RipeMD160", "BC");
+    byte[] ripeMD = ripeMD160Digest.digest(s1);
+    log.info("RipeMD160: {}", bytesToHex(ripeMD));
+
+    // 5.- Add version byte in front of RIPEMD-160 hash (0x00 for Main Network)
+    byte[] ripeMDPadded = hexToBytes("00" + bytesToHex(ripeMD));
+    log.info("RipeMD160Padded: {}", bytesToHex(ripeMDPadded));
+
+    // 6.- Perform SHA-256 hash on the extended RIPEMD-160 result
+    byte[] shaFinal = sha256.digest(sha256.digest(ripeMDPadded));
+
+    // 7.- Take the first 4 bytes of the second SHA-256 hash. This is the address checksum
+    byte[] sumBytes = new byte[25];
+    System.arraycopy(ripeMDPadded, 0, sumBytes, 0, 21);
+
+    // 8.- Add the 4 checksum bytes from stage 7 at the end of extended RIPEMD-160 hash from stage 4. This is the 25-byte binary Bitcoin Address.
+    System.arraycopy(shaFinal, 0, sumBytes, 21, 4);
+
+    // 9.- Convert the result from a byte string into a base58 string using Base58Check encoding. This is the most commonly used Bitcoin Address format
+    bitcoinAddress = Base58.encode(sumBytes);
+    log.info("Address: {}", bitcoinAddress);
+
+    BitcoinKeyPair bitcoinKeyPair = new BitcoinKeyPair();
+    bitcoinKeyPair.setPrivateKey(bitcoinPrivateKey);
+    bitcoinKeyPair.setPublicKey(bitcoinPublicKey);
+    bitcoinKeyPair.setAddress(bitcoinAddress);
+    return null;
+  }
+
+  /**
+   *
+   * @param hex
+   * @return
+   */
+  private static String adjustTo64(String hex) {
+    switch (hex.length()) {
+      case 62:
+        return "00" + hex;
+      case 63:
+        return "0" + hex;
+      case 64:
+        return hex;
+      default:
+        throw new IllegalArgumentException("not a valid key: " + hex);
+    }
+  }
+
+  /**
+   *
+   * @param bytes
+   * @return
+   */
+  private static String bytesToHex(byte[] bytes) {
+    StringBuilder sb = new StringBuilder();
+    for (byte b : bytes) {
+      sb.append(String.format("%02x", b));
+    }
+    return sb.toString();
+  }
+
+  /**
+   *
+   * @param hex
+   * @return
+   */
+  private static byte[] hexToBytes(String hex) {
+    int len = hex.length();
+    byte[] data = new byte[len / 2];
+    for (int i = 0; i < len; i += 2) {
+      data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
+        + Character.digit(hex.charAt(i + 1), 16));
+    }
+    return data;
+  }
+
+}

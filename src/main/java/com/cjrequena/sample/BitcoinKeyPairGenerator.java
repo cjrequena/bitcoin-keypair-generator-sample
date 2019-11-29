@@ -21,14 +21,14 @@ import java.security.spec.ECPoint;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Random;
 
-/**
- * <p>
- * <p>
- * <p>
- * <p>
- * @author cjrequena
- *
- */
+  /**
+   * <p>
+   * <p>
+   * <p>
+   * <p>
+   * @author cjrequena
+   *
+   */
 @Log4j2
 public class BitcoinKeyPairGenerator {
 
@@ -74,13 +74,12 @@ public class BitcoinKeyPairGenerator {
     String bitcoinAddress = null;
 
     //****************************
-    //0.- Generate ECDSA Key Pair
+    // Generate ECDSA Key Pair
     //****************************
     KeyPair keyPair = generateECKeyPair();
 
-    //****************************
-    // 1.- The Private Key
-    //****************************
+
+    // 0.- The Private Key
     ECPrivateKey ecPrivateKey = (ECPrivateKey) keyPair.getPrivate();
     bitcoinPrivateKey = adjustTo64(ecPrivateKey.getS().toString(16)).toUpperCase();
     log.info("Private Key: {}", bitcoinPrivateKey);
@@ -97,9 +96,7 @@ public class BitcoinKeyPairGenerator {
     //    log.info("sxBase16: {}", sxBase16);
     //    log.info("syBase16: {}", syBase16);
 
-    //****************************
-    // 2.- The Public Key
-    //****************************
+    // 1.- The Public Key
     if (!compressed) {
       //****************************
       // [uncompressed] This is the old format. It has generally stopped being used in favor of the shorter compressed format.
@@ -120,23 +117,28 @@ public class BitcoinKeyPairGenerator {
 
     log.info("Public Key: {}", bitcoinPublicKey);
 
-    // 3.-  Perform SHA-256 hashing on the public key
+    // 2.-  Perform SHA-256 hashing on the public key. [https://en.bitcoin.it/wiki/SHA-256]
+    // The public key will be converted to binary before hashing.
+    // This is the way things are hashed internally in bitcoin. (e.g. when creating a transaction ID)
     MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
-    byte[] s1 = sha256.digest(DatatypeConverter.parseHexBinary(bitcoinPublicKey));
+    byte[] sha1 = sha256.digest(DatatypeConverter.parseHexBinary(bitcoinPublicKey));
     //byte[] s1 = sha256.digest(bitcoinPublicKey.getBytes(StandardCharsets.UTF_8));
-    log.info("sha256: {}", bytesToHex(s1).toUpperCase());
+    log.info("sha256: {}", bytesToHex(sha1).toUpperCase());
 
-    // 4.- Perform RIPEMD-160 hashing on the result of SHA-256
+    // 3.- Perform RIPEMD-160 hashing on the result of SHA-256 [https://en.bitcoin.it/wiki/RIPEMD-160]
     MessageDigest ripeMD160Digest = MessageDigest.getInstance("RipeMD160", "BC");
-    byte[] ripeMD = ripeMD160Digest.digest(s1);
+    byte[] ripeMD = ripeMD160Digest.digest(sha1);
     log.info("RipeMD160: {}", bytesToHex(ripeMD));
 
-    // 5.- Add version byte in front of RIPEMD-160 hash (0x00 for Main Network)
+    // 4.- Add version byte in front of RIPEMD-160 hash (0x00 for Main Network)
     byte[] ripeMDPadded = hexToBytes("00" + bytesToHex(ripeMD));
     log.info("RipeMD160Padded: {}", bytesToHex(ripeMDPadded));
 
-    // 6.- Perform SHA-256 hash on the extended RIPEMD-160 result
-    byte[] shaFinal = sha256.digest(sha256.digest(ripeMDPadded));
+    // 5.- Perform SHA-256 hash on the extended RIPEMD-160 result
+    byte[] sha2 = sha256.digest(ripeMDPadded);
+
+    // 6.- Perform SHA-256 hash on the result of the previous SHA-256 hash
+    byte[] shaFinal = sha256.digest(sha2);
 
     // 7.- Take the first 4 bytes of the second SHA-256 hash. This is the address checksum
     byte[] sumBytes = new byte[25];
@@ -153,7 +155,7 @@ public class BitcoinKeyPairGenerator {
     bitcoinKeyPair.setPrivateKey(bitcoinPrivateKey);
     bitcoinKeyPair.setPublicKey(bitcoinPublicKey);
     bitcoinKeyPair.setAddress(bitcoinAddress);
-    return null;
+    return bitcoinKeyPair;
   }
 
   /**

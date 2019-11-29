@@ -21,14 +21,14 @@ import java.security.spec.ECPoint;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Random;
 
-  /**
-   * <p>
-   * <p>
-   * <p>
-   * <p>
-   * @author cjrequena
-   *
-   */
+/**
+ * <p>
+ * <p>
+ * <p>
+ * <p>
+ * @author cjrequena
+ *
+ */
 @Log4j2
 public class BitcoinKeyPairGenerator {
 
@@ -78,7 +78,6 @@ public class BitcoinKeyPairGenerator {
     //****************************
     KeyPair keyPair = generateECKeyPair();
 
-
     // 0.- The Private Key
     ECPrivateKey ecPrivateKey = (ECPrivateKey) keyPair.getPrivate();
     bitcoinPrivateKey = adjustTo64(ecPrivateKey.getS().toString(16)).toUpperCase();
@@ -123,32 +122,39 @@ public class BitcoinKeyPairGenerator {
     MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
     byte[] sha1 = sha256.digest(DatatypeConverter.parseHexBinary(bitcoinPublicKey));
     //byte[] s1 = sha256.digest(bitcoinPublicKey.getBytes(StandardCharsets.UTF_8));
-    log.info("sha256: {}", bytesToHex(sha1).toUpperCase());
+    log.info("Sha1: {}", bytesToHex(sha1).toUpperCase());
 
     // 3.- Perform RIPEMD-160 hashing on the result of SHA-256 [https://en.bitcoin.it/wiki/RIPEMD-160]
     MessageDigest ripeMD160Digest = MessageDigest.getInstance("RipeMD160", "BC");
     byte[] ripeMD = ripeMD160Digest.digest(sha1);
-    log.info("RipeMD160: {}", bytesToHex(ripeMD));
+    log.info("RipeMD160: {}", bytesToHex(ripeMD).toUpperCase());
 
     // 4.- Add version byte in front of RIPEMD-160 hash (0x00 for Main Network)
-    byte[] ripeMDPadded = hexToBytes("00" + bytesToHex(ripeMD));
-    log.info("RipeMD160Padded: {}", bytesToHex(ripeMDPadded));
+    byte[] ripeMDExtended = hexToBytes("00" + bytesToHex(ripeMD));
+    log.info("RipeMD160Extended: {}", bytesToHex(ripeMDExtended).toUpperCase());
 
     // 5.- Perform SHA-256 hash on the extended RIPEMD-160 result
-    byte[] sha2 = sha256.digest(ripeMDPadded);
+    byte[] sha2 = sha256.digest(ripeMDExtended);
+    log.info("Sha2: {}", bytesToHex(sha2).toUpperCase());
 
     // 6.- Perform SHA-256 hash on the result of the previous SHA-256 hash
-    byte[] shaFinal = sha256.digest(sha2);
+    byte[] sha3 = sha256.digest(sha2);
+    log.info("Sha3: {}", bytesToHex(sha3).toUpperCase());
 
-    // 7.- Take the first 4 bytes of the second SHA-256 hash. This is the address checksum
-    byte[] sumBytes = new byte[25];
-    System.arraycopy(ripeMDPadded, 0, sumBytes, 0, 21);
+    // 7.- Take the first 4 bytes of the previous hash SHA-256 hash. This is the address checksum
+    String checksum = bytesToHex(sha3).substring(0, 8).toUpperCase();
+    log.info("Checksum: {}", checksum);
 
     // 8.- Add the 4 checksum bytes from stage 7 at the end of extended RIPEMD-160 hash from stage 4. This is the 25-byte binary Bitcoin Address.
-    System.arraycopy(shaFinal, 0, sumBytes, 21, 4);
+    //    byte[] sumBytes = new byte[25];
+    //    System.arraycopy(ripeMDExtended, 0, sumBytes, 0, 21);
+    //    System.arraycopy(sha3, 0, sumBytes, 21, 4);
+    String ripeMDExtendedAndChecksum = bytesToHex(ripeMDExtended) + checksum;
+    log.info("RipeMDExtended + Checksum: {}", ripeMDExtendedAndChecksum.toUpperCase());
 
     // 9.- Convert the result from a byte string into a base58 string using Base58Check encoding. This is the most commonly used Bitcoin Address format
-    bitcoinAddress = Base58.encode(sumBytes);
+    //bitcoinAddress = Base58.encode(sumBytes);
+    bitcoinAddress = Base58.encode(hexToBytes(ripeMDExtendedAndChecksum));
     log.info("Address: {}", bitcoinAddress);
 
     BitcoinKeyPair bitcoinKeyPair = new BitcoinKeyPair();

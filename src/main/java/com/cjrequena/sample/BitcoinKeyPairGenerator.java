@@ -21,6 +21,10 @@ import java.security.spec.ECPoint;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Random;
 
+import static com.cjrequena.sample.Utils.adjustTo64;
+import static com.cjrequena.sample.Utils.bytesToHex;
+import static com.cjrequena.sample.Utils.hexToBytes;
+
 /**
  * <p>
  * <p>
@@ -69,6 +73,7 @@ public class BitcoinKeyPairGenerator {
   public static BitcoinKeyPair generateBitcoinKeyPair(boolean compressed)
     throws InvalidAlgorithmParameterException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException, UnsupportedEncodingException {
 
+    BitcoinKeyPair bitcoinKeyPair = new BitcoinKeyPair();
     String bitcoinPublicKey = null;
     String bitcoinPrivateKey = null;
     String bitcoinAddress = null;
@@ -82,6 +87,7 @@ public class BitcoinKeyPairGenerator {
     ECPrivateKey ecPrivateKey = (ECPrivateKey) keyPair.getPrivate();
     bitcoinPrivateKey = adjustTo64(ecPrivateKey.getS().toString(16)).toUpperCase();
     log.info("Private Key: {}", bitcoinPrivateKey);
+
 
     ECPublicKey ecPublicKey = (ECPublicKey) keyPair.getPublic();
     ECPoint ecPoint = ecPublicKey.getW();
@@ -102,6 +108,7 @@ public class BitcoinKeyPairGenerator {
       // In this uncompressed format, you just place the x and y coordinate next to each other, then prefix the whole thing with an 04
       //****************************
       bitcoinPublicKey = "04" + sxBase16 + syBase16;
+      bitcoinKeyPair.setCompressed(Boolean.FALSE);
     } else {
       //****************************
       // [compressed] Take the corresponding public key generated with it (33 bytes, 1 byte 0x02 (y-coord is even) 0x03 (y-coord is odd), and 32 bytes corresponding to X coordinate)
@@ -112,8 +119,8 @@ public class BitcoinKeyPairGenerator {
       } else {
         bitcoinPublicKey = "03" + sxBase16;
       }
+      bitcoinKeyPair.setCompressed(Boolean.TRUE);
     }
-
     log.info("Public Key: {}", bitcoinPublicKey);
 
     // 2.-  Perform SHA-256 hashing on the public key. [https://en.bitcoin.it/wiki/SHA-256]
@@ -157,57 +164,11 @@ public class BitcoinKeyPairGenerator {
     bitcoinAddress = Base58.encode(hexToBytes(ripeMDExtendedAndChecksum));
     log.info("Address: {}", bitcoinAddress);
 
-    BitcoinKeyPair bitcoinKeyPair = new BitcoinKeyPair();
     bitcoinKeyPair.setPrivateKey(bitcoinPrivateKey);
     bitcoinKeyPair.setPublicKey(bitcoinPublicKey);
     bitcoinKeyPair.setAddress(bitcoinAddress);
     return bitcoinKeyPair;
   }
 
-  /**
-   *
-   * @param hex
-   * @return
-   */
-  private static String adjustTo64(String hex) {
-    switch (hex.length()) {
-      case 62:
-        return "00" + hex;
-      case 63:
-        return "0" + hex;
-      case 64:
-        return hex;
-      default:
-        throw new IllegalArgumentException("not a valid key: " + hex);
-    }
-  }
-
-  /**
-   *
-   * @param bytes
-   * @return
-   */
-  private static String bytesToHex(byte[] bytes) {
-    StringBuilder sb = new StringBuilder();
-    for (byte b : bytes) {
-      sb.append(String.format("%02x", b));
-    }
-    return sb.toString();
-  }
-
-  /**
-   *
-   * @param hex
-   * @return
-   */
-  private static byte[] hexToBytes(String hex) {
-    int len = hex.length();
-    byte[] data = new byte[len / 2];
-    for (int i = 0; i < len; i += 2) {
-      data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
-        + Character.digit(hex.charAt(i + 1), 16));
-    }
-    return data;
-  }
 
 }

@@ -62,7 +62,11 @@ public class BitcoinKeyPairGeneratorTest {
   @Test
   public void generateBitcoinKeyPairTest() {
     try {
-      BitcoinKeyPairGenerator.generateBitcoinKeyPair(true);
+     BitcoinKeyPair bitcoinKeyPair = BitcoinKeyPairGenerator.generateBitcoinKeyPair(true);
+      log.debug("Bitcoin Address: {}",bitcoinKeyPair.getAddress());
+     log.debug("Is Compressed: {}", bitcoinKeyPair.getCompressed());
+     log.debug("Bitcoin Private Key WIF: {}", bitcoinKeyPair.getPrivateKeyWIF());
+
     } catch (NoSuchAlgorithmException ex) {
       fail(ex.getMessage());
     } catch (InvalidAlgorithmParameterException ex) {

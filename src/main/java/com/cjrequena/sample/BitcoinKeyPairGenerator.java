@@ -76,7 +76,6 @@ public class BitcoinKeyPairGenerator {
     BitcoinKeyPair bitcoinKeyPair = new BitcoinKeyPair();
     String bitcoinPublicKey = null;
     String bitcoinPrivateKey = null;
-    String bitcoinAddress = null;
 
     //****************************
     // Generate ECDSA Key Pair
@@ -88,7 +87,7 @@ public class BitcoinKeyPairGenerator {
     bitcoinPrivateKey = adjustTo64(ecPrivateKey.getS().toString(16)).toUpperCase();
     log.info("Private Key: {}", bitcoinPrivateKey);
 
-
+    // 1.- The Public Key
     ECPublicKey ecPublicKey = (ECPublicKey) keyPair.getPublic();
     ECPoint ecPoint = ecPublicKey.getW();
     String sxBase2 = ecPoint.getAffineX().toString(2).toUpperCase();
@@ -96,12 +95,6 @@ public class BitcoinKeyPairGenerator {
     String sxBase16 = adjustTo64(ecPoint.getAffineX().toString(16)).toUpperCase();
     String syBase16 = adjustTo64(ecPoint.getAffineY().toString(16)).toUpperCase();
 
-    //    log.info("sxBase2: {}", sxBase2);
-    //    log.info("syBase2: {}", syBase2);
-    //    log.info("sxBase16: {}", sxBase16);
-    //    log.info("syBase16: {}", syBase16);
-
-    // 1.- The Public Key
     if (!compressed) {
       //****************************
       // [uncompressed] This is the old format. It has generally stopped being used in favor of the shorter compressed format.
@@ -123,50 +116,8 @@ public class BitcoinKeyPairGenerator {
     }
     log.info("Public Key: {}", bitcoinPublicKey);
 
-    // 2.-  Perform SHA-256 hashing on the public key. [https://en.bitcoin.it/wiki/SHA-256]
-    // The public key will be converted to binary before hashing.
-    // This is the way things are hashed internally in bitcoin. (e.g. when creating a transaction ID)
-    MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
-    byte[] sha1 = sha256.digest(DatatypeConverter.parseHexBinary(bitcoinPublicKey));
-    //byte[] s1 = sha256.digest(bitcoinPublicKey.getBytes(StandardCharsets.UTF_8));
-    log.info("Sha1: {}", bytesToHex(sha1).toUpperCase());
-
-    // 3.- Perform RIPEMD-160 hashing on the result of SHA-256 [https://en.bitcoin.it/wiki/RIPEMD-160]
-    MessageDigest ripeMD160Digest = MessageDigest.getInstance("RipeMD160", "BC");
-    byte[] ripeMD = ripeMD160Digest.digest(sha1);
-    log.info("RipeMD160: {}", bytesToHex(ripeMD).toUpperCase());
-
-    // 4.- Add version byte in front of RIPEMD-160 hash (0x00 for Main Network)
-    byte[] ripeMDExtended = hexToBytes("00" + bytesToHex(ripeMD));
-    log.info("RipeMD160Extended: {}", bytesToHex(ripeMDExtended).toUpperCase());
-
-    // 5.- Perform SHA-256 hash on the extended RIPEMD-160 result
-    byte[] sha2 = sha256.digest(ripeMDExtended);
-    log.info("Sha2: {}", bytesToHex(sha2).toUpperCase());
-
-    // 6.- Perform SHA-256 hash on the result of the previous SHA-256 hash
-    byte[] sha3 = sha256.digest(sha2);
-    log.info("Sha3: {}", bytesToHex(sha3).toUpperCase());
-
-    // 7.- Take the first 4 bytes of the previous hash SHA-256 hash. This is the address checksum
-    String checksum = bytesToHex(sha3).substring(0, 8).toUpperCase();
-    log.info("Checksum: {}", checksum);
-
-    // 8.- Add the 4 checksum bytes from stage 7 at the end of extended RIPEMD-160 hash from stage 4. This is the 25-byte binary Bitcoin Address.
-    //    byte[] sumBytes = new byte[25];
-    //    System.arraycopy(ripeMDExtended, 0, sumBytes, 0, 21);
-    //    System.arraycopy(sha3, 0, sumBytes, 21, 4);
-    String ripeMDExtendedAndChecksum = bytesToHex(ripeMDExtended) + checksum;
-    log.info("RipeMDExtended + Checksum: {}", ripeMDExtendedAndChecksum.toUpperCase());
-
-    // 9.- Convert the result from a byte string into a base58 string using Base58Check encoding. This is the most commonly used Bitcoin Address format
-    //bitcoinAddress = Base58.encode(sumBytes);
-    bitcoinAddress = Base58.encode(hexToBytes(ripeMDExtendedAndChecksum));
-    log.info("Address: {}", bitcoinAddress);
-
     bitcoinKeyPair.setPrivateKey(bitcoinPrivateKey);
     bitcoinKeyPair.setPublicKey(bitcoinPublicKey);
-    bitcoinKeyPair.setAddress(bitcoinAddress);
     return bitcoinKeyPair;
   }
 

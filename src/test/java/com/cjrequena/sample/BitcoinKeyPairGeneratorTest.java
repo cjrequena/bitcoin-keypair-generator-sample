@@ -42,7 +42,7 @@ public class BitcoinKeyPairGeneratorTest {
       KeyPair keyPair = BitcoinKeyPairGenerator.generateECKeyPair();
       //Private Key
       final PrivateKey privateKey = keyPair.getPrivate();
-      ECPrivateKey ecPrivateKey = (ECPrivateKey)privateKey;
+      ECPrivateKey ecPrivateKey = (ECPrivateKey) privateKey;
 
       log.info("ECPrivate Key Base 10: {}", ecPrivateKey.getS().toString());
       log.info("ECPrivate Key Base 2: {}", ecPrivateKey.getS().toString(2));
@@ -50,7 +50,7 @@ public class BitcoinKeyPairGeneratorTest {
       assertTrue(privateKey.getAlgorithm().equals("EC"));
       assertTrue(ecPrivateKey.getParams().getCurve().getA().equals(BigInteger.ZERO));
       assertTrue(ecPrivateKey.getParams().getCurve().getB().equals(BigInteger.valueOf(7)));
-      assertTrue(ecPrivateKey.getS().toString(2).length()<=256);
+      assertTrue(ecPrivateKey.getS().toString(2).length() <= 256);
 
     } catch (NoSuchAlgorithmException ex) {
       fail(ex.getMessage());
@@ -62,10 +62,10 @@ public class BitcoinKeyPairGeneratorTest {
   @Test
   public void generateBitcoinKeyPairTest() {
     try {
-     BitcoinKeyPair bitcoinKeyPair = BitcoinKeyPairGenerator.generateBitcoinKeyPair(true);
-      log.debug("Bitcoin Address: {}",bitcoinKeyPair.getAddress());
-     log.debug("Is Compressed: {}", bitcoinKeyPair.getCompressed());
-     log.debug("Bitcoin Private Key WIF: {}", bitcoinKeyPair.getPrivateKeyWIF());
+      BitcoinKeyPair bitcoinKeyPair = BitcoinKeyPairGenerator.generateBitcoinKeyPair(true);
+      log.debug("Bitcoin Address: {}", bitcoinKeyPair.getAddress());
+      log.debug("Is Compressed: {}", bitcoinKeyPair.getCompressed());
+      log.debug("Bitcoin Private Key WIF: {}", bitcoinKeyPair.getPrivateKeyWIF());
 
     } catch (NoSuchAlgorithmException ex) {
       fail(ex.getMessage());

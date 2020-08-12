@@ -85,7 +85,6 @@ public class BitcoinKeyPairGenerator {
     // 0.- The Private Key
     ECPrivateKey ecPrivateKey = (ECPrivateKey) keyPair.getPrivate();
     bitcoinPrivateKey = adjustTo64(ecPrivateKey.getS().toString(16)).toUpperCase();
-    log.info("Private Key: {}", bitcoinPrivateKey);
 
     // 1.- The Public Key
     ECPublicKey ecPublicKey = (ECPublicKey) keyPair.getPublic();
@@ -114,12 +113,117 @@ public class BitcoinKeyPairGenerator {
       }
       bitcoinKeyPair.setCompressed(Boolean.TRUE);
     }
-    log.info("Public Key: {}", bitcoinPublicKey);
+
+    String bitcoinPrivateKeyWIF = generateBitcoinPrivateKeyWIF(bitcoinPrivateKey, compressed);
+    String bitcoinAddress = generateBitcoinAddress(bitcoinPublicKey);
 
     bitcoinKeyPair.setPrivateKey(bitcoinPrivateKey);
     bitcoinKeyPair.setPublicKey(bitcoinPublicKey);
+    bitcoinKeyPair.setPrivateKeyWIF(bitcoinPrivateKeyWIF);
+    bitcoinKeyPair.setAddress(bitcoinAddress);
+
+    log.info("Private Key: {}", bitcoinPrivateKey);
+    log.info("Public Key: {}", bitcoinPublicKey);
+    log.debug("Private Key WIF {}", bitcoinPrivateKeyWIF);
+    log.debug("Address {}", bitcoinAddress);
     return bitcoinKeyPair;
   }
 
+  /**
+   *
+   * @return
+   */
+  public static String generateBitcoinPrivateKeyWIF(String privateKey, boolean compressed) {
+    try {
+      String privateKeyWIF = null;
+      // 1 - Take a private key
+      // 2 - Add a 0x80 byte in front of it for mainnet addresses or 0xef for testnet addresses.
+      // Also add a 0x01 byte at the end if the private key will correspond to a compressed public key
+      if (compressed) {
+        privateKeyWIF = "80" + privateKey + "01";
+      } else {
+        privateKeyWIF = "80" + privateKey;
+      }
+
+      // 3 - Perform SHA-256 hash on the extended key
+      MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+      byte[] sha1 = sha256.digest(DatatypeConverter.parseHexBinary(privateKeyWIF));
+      //log.debug("Sha256-1: {}", bytesToHex(sha1).toUpperCase());
+
+      // 4 - Perform SHA-256 hash on result of SHA-256 hash
+      byte[] sha2 = sha256.digest(sha1);
+      //log.debug("Sha256-2: {}", bytesToHex(sha2).toUpperCase());
+
+      // 5 - Take the first 4 bytes of the second SHA-256 hash, this is the checksum
+      String checksum = bytesToHex(sha2).substring(0, 8).toUpperCase();
+      //log.debug("Checksum: {}", checksum);
+
+      // 6 - Add the 4 checksum bytes from point 5 at the end of the extended key from point 2
+      privateKeyWIF = privateKeyWIF + checksum;
+      //log.debug("Private Key + Checksum: {}", privateKeyWIF.toUpperCase());
+
+      // 7 - Convert the result from a byte string into a base58 string using Base58Check encoding. This is the Wallet Import Format
+      privateKeyWIF = Base58.encode(hexToBytes(privateKeyWIF));
+      //log.debug("Private Key WIF: {}", privateKeyWIF);
+      return privateKeyWIF;
+    } catch (NoSuchAlgorithmException e) {
+      e.printStackTrace();
+      return null;
+    }
+  }
+
+  /**
+   *
+   * @return
+   */
+  public static String generateBitcoinAddress(String publicKey) {
+    try {
+      String address = null;
+
+      // 1.- Take the Public key
+      // 2.-  Perform SHA-256 hashing on the public key. [https://en.bitcoin.it/wiki/SHA-256]
+      // The public key will be converted to binary before hashing.
+      // This is the way things are hashed internally in bitcoin. (e.g. when creating a transaction ID)
+      MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+      byte[] sha1 = sha256.digest(DatatypeConverter.parseHexBinary(publicKey));
+      //log.debug("Sha256-1: {}", bytesToHex(sha1).toUpperCase());
+
+      // 3.- Perform RIPEMD-160 hashing on the result of SHA-256 [https://en.bitcoin.it/wiki/RIPEMD-160]
+      MessageDigest ripeMD160Digest = MessageDigest.getInstance("RipeMD160", "BC");
+      byte[] ripeMD = ripeMD160Digest.digest(sha1);
+      //log.debug("RipeMD160: {}", bytesToHex(ripeMD).toUpperCase());
+
+      // 4.- Add version byte in front of RIPEMD-160 hash (0x00 for Main Network)
+      byte[] ripeMDExtended = hexToBytes("00" + bytesToHex(ripeMD));
+      //log.debug("RipeMD160Extended: {}", bytesToHex(ripeMDExtended).toUpperCase());
+
+      // 5.- Perform SHA-256 hash on the extended RIPEMD-160 result
+      byte[] sha2 = sha256.digest(ripeMDExtended);
+      //log.debug("Sha256-2: {}", bytesToHex(sha2).toUpperCase());
+
+      // 6.- Perform SHA-256 hash on the result of the previous SHA-256 hash
+      byte[] sha3 = sha256.digest(sha2);
+      //log.debug("Sha256-3: {}", bytesToHex(sha3).toUpperCase());
+
+      // 7.- Take the first 4 bytes of the previous hash SHA-256 hash. This is the address checksum
+      String checksum = bytesToHex(sha3).substring(0, 8).toUpperCase();
+      //log.debug("Checksum: {}", checksum);
+
+      // 8.- Add the 4 checksum bytes from stage 7 at the end of extended RIPEMD-160 hash from stage 4. This is the 25-byte binary Bitcoin Address.
+      String ripeMDExtendedAndChecksum = bytesToHex(ripeMDExtended) + checksum;
+      //log.debug("RipeMDExtended + Checksum: {}", ripeMDExtendedAndChecksum.toUpperCase());
+
+      // 9.- Convert the result from a byte string into a base58 string using Base58Check encoding. This is the most commonly used Bitcoin Address format
+      address = Base58.encode(hexToBytes(ripeMDExtendedAndChecksum));
+      //log.debug("Bitcoin Address:  {}", address);
+      return address;
+    } catch (NoSuchAlgorithmException ex) {
+      ex.printStackTrace();
+      return null;
+    } catch (NoSuchProviderException ex) {
+      ex.printStackTrace();
+      return null;
+    }
+  }
 
 }

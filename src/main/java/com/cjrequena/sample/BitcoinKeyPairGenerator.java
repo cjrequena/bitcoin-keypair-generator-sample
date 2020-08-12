@@ -124,8 +124,8 @@ public class BitcoinKeyPairGenerator {
 
     log.info("Private Key: {}", bitcoinPrivateKey);
     log.info("Public Key: {}", bitcoinPublicKey);
-    log.debug("Private Key WIF {}", bitcoinPrivateKeyWIF);
-    log.debug("Address {}", bitcoinAddress);
+    log.info("Private Key WIF {}", bitcoinPrivateKeyWIF);
+    log.info("Address {}", bitcoinAddress);
     return bitcoinKeyPair;
   }
 

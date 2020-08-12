@@ -10,6 +10,6 @@
         <Root level="WARN">
             <AppenderRef ref="Console"/>
         </Root>
-        <Logger name="com.cjrequena" level="DEBUG"/>
+        <Logger name="com.cjrequena.sample" level="INFO"/>
     </Loggers>
 </Configuration>

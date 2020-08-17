@@ -8,6 +8,7 @@ import lombok.extern.log4j.Log4j2;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.net.URL;
+import java.util.Random;
 
 /**
  * <p>
@@ -32,18 +33,19 @@ public class CheckBalance {
     int count = 1;
     while (true) {
       try {
-
-        BitcoinKeyPair bitcoinKeyPair = BitcoinKeyPairGenerator.generateBitcoinKeyPair(true);
+        Random rd = new Random(); // creating Random object
+        BitcoinKeyPair bitcoinKeyPair = BitcoinKeyPairGenerator.generateBitcoinKeyPair(rd.nextBoolean());
         // writer = new BufferedWriter(new FileWriter("private_keys_wif.txt", true));
         // writer.append(bitcoinKeyPair.getPrivateKeyWIF() + "\n");
         // writer.close();
 
         String url = "https://api.blockcypher.com/v1/btc/main/addrs/" + bitcoinKeyPair.getAddress() + "/balance";
+
         ObjectMapper mapper = new ObjectMapper();
         //JSON URL to Java object
         BalanceDTO balanceDTO = mapper.readValue(new URL(url), BalanceDTO.class);
         balanceDTO.setPrivateKeyWif(bitcoinKeyPair.getPrivateKeyWIF());
-        if (balanceDTO.getBalance() > 0 || balanceDTO.getUnconfirmedBalance() > 0 || balanceDTO.getTotalReceived() > 0) {
+        if (balanceDTO.getBalance() > 0 || balanceDTO.getFinalBalance() > 0 || balanceDTO.getUnconfirmedBalance() > 0 || balanceDTO.getTotalReceived() > 0) {
           writer = new BufferedWriter(new FileWriter("balance.txt", true));
           //writer.append("========== \n");
           writer.append(balanceDTO.toString() + "\n");

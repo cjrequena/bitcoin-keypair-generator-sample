@@ -15,7 +15,7 @@
         <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core -->
         <log4j2.version>2.12.1</log4j2.version>
         <!-- https://mvnrepository.com/artifact/junit/junit -->
-        <junit.version>4.12</junit.version>
+        <junit.version>4.13.1</junit.version>
         <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
         <lombok.version>1.16.12</lombok.version>
 

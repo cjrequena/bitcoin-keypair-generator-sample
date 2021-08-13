@@ -10,7 +10,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>1.8</java.version>
         <!-- https://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk15on -->
-        <bcprov-jdk15on.version>1.64</bcprov-jdk15on.version>
+        <bcprov-jdk15on.version>1.67</bcprov-jdk15on.version>
         <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-api -->
         <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core -->
         <log4j2.version>2.12.1</log4j2.version>

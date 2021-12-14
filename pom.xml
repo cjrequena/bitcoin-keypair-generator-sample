@@ -13,7 +13,7 @@
         <bcprov-jdk15on.version>1.64</bcprov-jdk15on.version>
         <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-api -->
         <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core -->
-        <log4j2.version>2.12.1</log4j2.version>
+        <log4j2.version>2.16.0</log4j2.version>
         <!-- https://mvnrepository.com/artifact/junit/junit -->
         <junit.version>4.12</junit.version>
         <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->

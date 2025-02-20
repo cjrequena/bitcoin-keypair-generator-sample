@@ -2,28 +2,20 @@ package com.cjrequena.sample;
 
 import lombok.extern.log4j.Log4j2;
 import org.bitcoinj.core.Base58;
+import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.jce.spec.ECParameterSpec;
 
-import javax.xml.bind.DatatypeConverter;
 import java.io.UnsupportedEncodingException;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.SecureRandom;
-import java.security.Security;
+import java.security.*;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
-import java.security.spec.ECGenParameterSpec;
 import java.security.spec.ECPoint;
 import java.security.spec.InvalidKeySpecException;
+import java.util.HexFormat;
 import java.util.Random;
 
-import static com.cjrequena.sample.Utils.adjustTo64;
-import static com.cjrequena.sample.Utils.bytesToHex;
-import static com.cjrequena.sample.Utils.hexToBytes;
+import static com.cjrequena.sample.Utils.*;
 
 /**
  * <p>
@@ -50,14 +42,24 @@ public class BitcoinKeyPairGenerator {
    * @throws NoSuchAlgorithmException
    * @throws InvalidAlgorithmParameterException
    */
-  public static KeyPair generateECKeyPair() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException {
-    KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
-    ECGenParameterSpec parameterSpec = new ECGenParameterSpec(SECP256K1);
+  public static KeyPair generateECKeyPair() throws NoSuchAlgorithmException, InvalidAlgorithmParameterException, NoSuchProviderException {
+
+    // Get the secp256k1 curve parameters
+    ECParameterSpec spec = ECNamedCurveTable.getParameterSpec("secp256k1");
+
+    // Create a KeyPairGenerator for EC
     SecureRandom secureRandom = new SecureRandom();
     secureRandom.setSeed(new Random().nextLong());
-    keyGen.initialize(parameterSpec, secureRandom);
-    KeyPair keyPair = keyGen.generateKeyPair();
+    KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("EC", "BC");
+    keyPairGenerator.initialize(spec, secureRandom);
+
+    // Generate the key pair
+    KeyPair keyPair = keyPairGenerator.generateKeyPair();
+    log.info("Private Key: {} ", keyPair.getPrivate());
+    log.info("Public Key: {}", keyPair.getPublic());
+
     return keyPair;
+
   }
 
   /**
@@ -147,7 +149,7 @@ public class BitcoinKeyPairGenerator {
 
       // 3 - Perform SHA-256 hash on the extended key
       MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
-      byte[] sha1 = sha256.digest(DatatypeConverter.parseHexBinary(privateKeyWIF));
+      byte[] sha1 = sha256.digest(HexFormat.of().parseHex(privateKeyWIF));
       //log.debug("Sha256-1: {}", bytesToHex(sha1).toUpperCase());
 
       // 4 - Perform SHA-256 hash on result of SHA-256 hash
@@ -185,7 +187,7 @@ public class BitcoinKeyPairGenerator {
       // The public key will be converted to binary before hashing.
       // This is the way things are hashed internally in bitcoin. (e.g. when creating a transaction ID)
       MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
-      byte[] sha1 = sha256.digest(DatatypeConverter.parseHexBinary(publicKey));
+      byte[] sha1 = sha256.digest(HexFormat.of().parseHex(publicKey));
       //log.debug("Sha256-1: {}", bytesToHex(sha1).toUpperCase());
 
       // 3.- Perform RIPEMD-160 hashing on the result of SHA-256 [https://en.bitcoin.it/wiki/RIPEMD-160]

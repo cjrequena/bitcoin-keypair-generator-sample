@@ -10,6 +10,7 @@
         <Root level="WARN">
             <AppenderRef ref="Console"/>
         </Root>
+<!--        <Logger name="com.cjrequena.sample" level="INFO"/>-->
         <Logger name="com.cjrequena.sample.BitcoinKeyPairGenerator" level="WARN"/>
         <Logger name="com.cjrequena.sample.checkbalance.CheckBalance" level="INFO"/>
 

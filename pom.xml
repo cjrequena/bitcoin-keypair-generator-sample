@@ -92,6 +92,14 @@
                     <include>**/*.xml</include>
                 </includes>
             </resource>
+            <resource>
+                <!-- Non-filtered assets such as the BIP-39 wordlist. -->
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <includes>
+                    <include>**/*.txt</include>
+                </includes>
+            </resource>
         </resources>
         <plugins>
             <!-- -->
